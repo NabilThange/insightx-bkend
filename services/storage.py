@@ -45,21 +45,38 @@ async def ensure_parquet_local(session_id: str) -> str:
     """Ensure Parquet file exists locally, download from Supabase if missing.
     
     Cache-aside pattern: checks Railway disk first, downloads from Supabase Storage if missing.
+    If local disk is not writable, that's OK - we'll just use Supabase Storage.
     
     Args:
         session_id: Session UUID
         
     Returns:
-        Local path to Parquet file
+        Local path to Parquet file (or path that will be downloaded on demand)
     """
-    local_path = f"/data/{session_id}/raw.parquet"
+    data_dir = os.getenv("DATA_DIR", "/data")
+    local_path = f"{data_dir}/{session_id}/raw.parquet"
     
-    if not os.path.exists(local_path):
-        os.makedirs(f"/data/{session_id}", exist_ok=True)
+    # Check if file exists locally
+    if os.path.exists(local_path):
+        print(f"✓ Parquet found locally at {local_path}")
+        return local_path
+    
+    # Try to download and cache
+    try:
+        print(f"⚠ Parquet not found locally, downloading from Supabase Storage...")
+        os.makedirs(f"{data_dir}/{session_id}", exist_ok=True)
         file_bytes = supabase.storage.from_(BUCKET_NAME).download(
             f"{session_id}/raw.parquet"
         )
         with open(local_path, "wb") as f:
             f.write(file_bytes)
-    
-    return local_path
+        print(f"✓ Parquet cached at {local_path}")
+        return local_path
+    except (PermissionError, OSError) as e:
+        print(f"⚠ Could not cache Parquet locally: {e}")
+        print(f"  Will download from Supabase Storage on demand")
+        # Return the path anyway - we'll handle the download in the caller
+        return local_path
+    except Exception as e:
+        print(f"✗ Error downloading Parquet: {e}")
+        raise

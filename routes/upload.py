@@ -1,6 +1,7 @@
 """File upload endpoint."""
 import io
 import os
+import tempfile
 from uuid import uuid4
 from fastapi import APIRouter, UploadFile, File, HTTPException
 import pandas as pd
@@ -11,18 +12,16 @@ from services.storage import upload_file
 
 router = APIRouter()
 
-DATA_DIR = "/data"
-
 @router.post("/upload", response_model=UploadResponse)
 async def upload_csv(file: UploadFile = File(...)):
-    """Upload CSV, convert to Parquet, store in Supabase Storage and local disk.
+    """Upload CSV, convert to Parquet, store in Supabase Storage.
     
     Steps:
     1. Read CSV into pandas
     2. Generate session_id
     3. Convert to Parquet
     4. Upload both CSV and Parquet to Supabase Storage
-    5. Save Parquet to local disk
+    5. Try to save Parquet to local disk (optional, for caching)
     6. Create session row in DB
     """
     try:
@@ -47,12 +46,19 @@ async def upload_csv(file: UploadFile = File(...)):
         # Upload Parquet to Supabase Storage
         parquet_path = upload_file(session_id, "raw.parquet", parquet_bytes)
         
-        # Save Parquet to local disk (Railway cache)
-        local_dir = os.path.join(DATA_DIR, session_id)
-        os.makedirs(local_dir, exist_ok=True)
-        local_parquet_path = os.path.join(local_dir, "raw.parquet")
-        with open(local_parquet_path, "wb") as f:
-            f.write(parquet_bytes)
+        # Try to save Parquet to local disk (Railway cache) - optional
+        # If it fails (permission denied), that's OK - we have it in Supabase Storage
+        try:
+            data_dir = os.getenv("DATA_DIR", "/data")
+            local_dir = os.path.join(data_dir, session_id)
+            os.makedirs(local_dir, exist_ok=True)
+            local_parquet_path = os.path.join(local_dir, "raw.parquet")
+            with open(local_parquet_path, "wb") as f:
+                f.write(parquet_bytes)
+            print(f"✓ Cached Parquet locally at {local_parquet_path}")
+        except (PermissionError, OSError) as e:
+            print(f"⚠ Could not cache Parquet locally: {e}")
+            print(f"  This is OK - will download from Supabase Storage when needed")
         
         # Create session in Supabase DB
         session_data = {
