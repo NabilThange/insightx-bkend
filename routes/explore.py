@@ -1,9 +1,10 @@
 """Data exploration endpoint."""
+import tempfile
 import os
 from fastapi import APIRouter, HTTPException
 from db.client import supabase
 from services.explorer import run_exploration
-from services.storage import ensure_parquet_local, download_file
+from services.storage import download_file
 
 router = APIRouter()
 
@@ -12,31 +13,23 @@ async def explore_session(session_id: str):
     """Run data exploration on uploaded Parquet file.
     
     Steps:
-    1. Ensure Parquet exists locally (cache-aside pattern)
-    2. If not available locally, download from Supabase Storage
+    1. Download Parquet from Supabase Storage
+    2. Write to temp file (delete=False so it persists)
     3. Run exploration to generate Data DNA
-    4. Update session in DB with data_dna and status='ready'
+    4. Clean up temp file
+    5. Update session in DB with data_dna and status='ready'
     """
     try:
-        # Try to get parquet from local disk first
-        parquet_path = await ensure_parquet_local(session_id)
+        file_bytes = download_file(session_id, "raw.parquet")
         
-        # If local file doesn't exist, download from Supabase and use temp file
-        if not os.path.exists(parquet_path):
-            print(f"Local file not available, downloading from Supabase Storage...")
-            try:
-                file_bytes = download_file(session_id, "raw.parquet")
-                # Use temp file for exploration
-                import tempfile
-                with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as tmp:
-                    tmp.write(file_bytes)
-                    parquet_path = tmp.name
-                print(f"Using temp file: {parquet_path}")
-            except Exception as e:
-                raise HTTPException(status_code=500, detail=f"Could not download Parquet: {str(e)}")
+        tmp = tempfile.NamedTemporaryFile(suffix=".parquet", delete=False)
+        tmp.write(file_bytes)
+        tmp.close()
         
-        # Run full exploration — returns clean dict
-        data_dna = run_exploration(parquet_path)
+        try:
+            data_dna = run_exploration(tmp.name)
+        finally:
+            os.unlink(tmp.name)  # clean up after we're done
         
         # Save to Supabase sessions table
         result = supabase.table("sessions").update({
