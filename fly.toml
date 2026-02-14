@@ -1,0 +1,13 @@
+app = "insightx-bkend"
+primary_region = "sin"
+
+[build]
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+
+[machines]
+  memory = "512mb"
