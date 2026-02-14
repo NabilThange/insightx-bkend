@@ -1,4 +1,5 @@
 """Supabase Storage helpers for file upload/download."""
+import os
 from db.client import supabase
 
 BUCKET_NAME = "datasets"
@@ -39,3 +40,26 @@ def download_file(session_id: str, filename: str) -> bytes:
     response = supabase.storage.from_(BUCKET_NAME).download(path)
     
     return response
+
+async def ensure_parquet_local(session_id: str) -> str:
+    """Ensure Parquet file exists locally, download from Supabase if missing.
+    
+    Cache-aside pattern: checks Railway disk first, downloads from Supabase Storage if missing.
+    
+    Args:
+        session_id: Session UUID
+        
+    Returns:
+        Local path to Parquet file
+    """
+    local_path = f"/data/{session_id}/raw.parquet"
+    
+    if not os.path.exists(local_path):
+        os.makedirs(f"/data/{session_id}", exist_ok=True)
+        file_bytes = supabase.storage.from_(BUCKET_NAME).download(
+            f"{session_id}/raw.parquet"
+        )
+        with open(local_path, "wb") as f:
+            f.write(file_bytes)
+    
+    return local_path
