@@ -2,7 +2,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
-from routes import upload, explore, sessions, chats, chat
+from routes import upload, explore, sessions, chats, chat, sql_execute, python_execute, insights
 
 # Load environment variables from .env file
 load_dotenv()
@@ -28,6 +28,9 @@ app.include_router(explore.router, prefix="/api", tags=["Explore"])
 app.include_router(sessions.router, prefix="/api", tags=["Sessions"])
 app.include_router(chats.router, prefix="/api", tags=["Chats"])
 app.include_router(chat.router, prefix="/api", tags=["Chat Stream"])
+app.include_router(sql_execute.router, prefix="/api", tags=["SQL Execution"])
+app.include_router(python_execute.router, prefix="/api", tags=["Python Execution"])
+app.include_router(insights.router, prefix="/api", tags=["Insights"])
 
 @app.get("/")
 def health_check():

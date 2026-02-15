@@ -126,7 +126,7 @@ AGENTS: Dict[str, AgentConfig] = {
     "orchestrator": AgentConfig(
         id="orchestrator",
         name="Orchestrator",
-        model="gpt-4-turbo",
+        model="claude-sonnet-4-5",
         temperature=0.3,
         max_tokens=500,
         system_prompt=ORCHESTRATOR_PROMPT,
@@ -135,7 +135,7 @@ AGENTS: Dict[str, AgentConfig] = {
     "sql_agent": AgentConfig(
         id="sql_agent",
         name="SQL Agent",
-        model="gpt-4-turbo",
+        model="claude-sonnet-4-5",
         temperature=0.2,
         max_tokens=1000,
         system_prompt=SQL_AGENT_PROMPT,
@@ -144,7 +144,7 @@ AGENTS: Dict[str, AgentConfig] = {
     "python_agent": AgentConfig(
         id="python_agent",
         name="Python Analyst",
-        model="gpt-4-turbo",
+        model="claude-sonnet-4-5",
         temperature=0.3,
         max_tokens=1500,
         system_prompt=PYTHON_AGENT_PROMPT,
@@ -153,7 +153,7 @@ AGENTS: Dict[str, AgentConfig] = {
     "composer": AgentConfig(
         id="composer",
         name="Composer",
-        model="gpt-4-turbo",
+        model="claude-sonnet-4-5",
         temperature=0.5,
         max_tokens=1000,
         system_prompt=COMPOSER_PROMPT,
@@ -162,7 +162,7 @@ AGENTS: Dict[str, AgentConfig] = {
     "validator": AgentConfig(
         id="validator",
         name="Validator",
-        model="gpt-4-turbo",
+        model="claude-sonnet-4-5",
         temperature=0.2,
         max_tokens=500,
         system_prompt=VALIDATOR_PROMPT,
