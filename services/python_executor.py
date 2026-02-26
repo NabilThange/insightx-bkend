@@ -19,6 +19,7 @@ ALLOWED_MODULES = {
     "math",
     "statistics",
     "json",
+    "sys",  # Needed for wrapper code
 }
 
 # Dangerous built-ins to block
@@ -192,7 +193,10 @@ import sys
 {code}
 
 # Output results as JSON
-if 'results' in locals():
+try:
+    results
     print(json.dumps(results))
+except NameError:
+    pass
 """
     return wrapper

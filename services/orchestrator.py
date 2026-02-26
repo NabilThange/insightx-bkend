@@ -75,18 +75,51 @@ class Orchestrator:
                 ],
             )
 
-            yield {
-                "type": "orchestrator_result",
-                "data": classification,
-            }
-
-            # Parse classification
+            # Parse classification - with better error handling
+            classification_obj = None
             try:
                 classification_obj = json.loads(classification)
+                print(f"[DEBUG] ✅ Successfully parsed orchestrator JSON: {classification_obj}")
             except json.JSONDecodeError:
-                classification_obj = {"classification": "EXPLAIN_ONLY"}
+                print(f"[DEBUG] ⚠️ Initial JSON parse failed. Raw response: {classification[:200]}")
+                # Try to extract JSON from the response if it contains extra text
+                import re
+                json_match = re.search(r'\{.*\}', classification, re.DOTALL)
+                if json_match:
+                    try:
+                        classification_obj = json.loads(json_match.group())
+                        print(f"[DEBUG] ✅ Extracted JSON from response: {classification_obj}")
+                    except json.JSONDecodeError as e:
+                        print(f"[DEBUG] ❌ Failed to parse extracted JSON: {e}")
+                        pass
+            
+            # If still no valid JSON, log the raw response for debugging
+            if not classification_obj:
+                print(f"[DEBUG] ❌ FALLBACK: Orchestrator returned invalid JSON. Full response:\n{classification}")
+                classification_obj = {"classification": "EXPLAIN_ONLY", "reasoning": "Failed to parse orchestrator response"}
+            
+            print(f"[DEBUG] Final classification: {classification_obj.get('classification')} - Reasoning: {classification_obj.get('reasoning')}")
+
+            yield {
+                "type": "orchestrator_result",
+                "data": classification_obj,
+            }
 
             query_type = classification_obj.get("classification", "EXPLAIN_ONLY")
+            
+            # Emit toast message for agent selection
+            agent_names = {
+                "SQL_ONLY": "SQL Agent",
+                "PY_ONLY": "Python Analyst",
+                "SQL_THEN_PY": "SQL + Python Analysis",
+                "EXPLAIN_ONLY": "Explainer Agent"
+            }
+            
+            yield {
+                "type": "toast",
+                "message": f"Using {agent_names.get(query_type, 'Explainer Agent')}",
+                "data": {"agent": query_type, "reasoning": classification_obj.get("reasoning", "")}
+            }
 
             # 3. Execute based on classification
             sql_result = None

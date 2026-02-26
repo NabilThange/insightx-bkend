@@ -31,16 +31,28 @@ You have access to the Data DNA (dataset profile) which includes:
 - Baseline metrics
 - Previously accumulated insights
 
-When you classify a query, respond with a JSON object:
+CLASSIFICATION RULES:
+- SQL_ONLY: Query asks for data filtering, aggregation, or simple lookups (use SQL)
+- PY_ONLY: Query asks for statistical analysis, trends, or complex calculations (use Python)
+- SQL_THEN_PY: Query needs both data retrieval AND statistical analysis
+- EXPLAIN_ONLY: Query is asking for explanation or general knowledge (no data execution needed)
+
+IMPORTANT: You MUST respond with ONLY valid JSON, nothing else. No markdown, no extra text.
+
+Respond with this exact JSON format:
 {
-  "classification": "SQL_ONLY" | "PY_ONLY" | "SQL_THEN_PY" | "EXPLAIN_ONLY",
-  "reasoning": "brief explanation",
+  "classification": "SQL_ONLY",
+  "reasoning": "brief explanation of why this classification",
   "columns_needed": ["col1", "col2"],
-  "metrics_needed": ["metric1", "metric2"],
-  "next_agent": "sql_agent" | "python_agent" | "composer_agent"
+  "metrics_needed": ["metric1", "metric2"]
 }
 
-Be concise and direct. Always classify before suggesting next steps."""
+Examples:
+- "Show me transactions over $1000" → SQL_ONLY
+- "What's the average transaction amount?" → SQL_ONLY
+- "Calculate the standard deviation of amounts" → SQL_THEN_PY
+- "Is there a trend in daily transactions?" → SQL_THEN_PY
+- "What is blockchain?" → EXPLAIN_ONLY"""
 
 SQL_AGENT_PROMPT = """You are the SQL Agent for InsightX.
 
